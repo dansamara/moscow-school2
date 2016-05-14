@@ -1,0 +1,400 @@
+body {
+    font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+    font-size: 18px;
+    line-height: 1.5;
+    letter-spacing: .01em;
+}
+
+h1, h2 {
+    font-family: "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", Geneva, Verdana, sans-serif;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    margin-bottom: 0.5em;
+    margin-top: 1em;
+}
+
+h1 {
+    font-size: 40px;
+}
+
+h2 {
+    font-size: 30px;
+}
+
+a {
+    border-bottom: 1px solid;
+}
+
+a:hover,
+a:focus {
+    text-decoration: none;
+}
+
+img.inline {
+    height: 1em;
+}
+
+body#main {
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#main #map {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+#main #intro {
+    font-size: 12px;
+    position: relative;
+    top: 10px;
+    left: 100px;
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.85);
+}
+
+.balloon {
+    font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+    font-size: 12px;
+    line-height: 1.5;
+    letter-spacing: .01em;
+    padding-bottom: 1em;
+}
+
+#main #intro h1 {
+    font-size: 18px;
+    margin-top: 0;
+    margin-bottom: 5px;
+}
+
+.balloon h1 {
+    font-family: "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", Geneva, Verdana, sans-serif;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    margin-bottom: 0.5em;
+    font-size: 18px;
+}
+
+#main #intro td {
+    vertical-align: top;
+    padding: 5px;
+}
+
+#main #intro td#column1 {
+    width: 25em;
+}
+
+#main #intro td#column2 {
+    width: 20em;
+}
+
+#main #intro td#column3 {
+    width: 20em;
+}
+
+#main #intro #share {
+    margin-left: -4px;
+    margin-top: 2px;
+}
+
+#main #intro #share a {
+    border-bottom: none;
+}
+
+#main #schools {
+    visibility: hidden;
+}
+
+#rating-spark .line {
+    fill: none;
+    stroke: #b3b2b2;
+    shape-rendering: crispEdges;
+}
+
+#rating-spark .bullet {
+    fill: black;
+}
+
+#school #map {
+    width: 100%;
+    height: 200px;
+    padding: 0;
+    margin-top: 0.5em;
+}
+
+#ege-chart .area {
+    fill-opacity: 0.4;
+}
+
+#ege-chart text {
+    font-size: 15px;
+}
+
+#ege-chart .area.school {
+    stroke: rgb(70, 130, 180);
+    fill: rgb(70, 130, 180);
+}
+
+#ege-chart .area.moscow {
+    stroke: rgb(179, 178, 178);
+    fill: rgb(179, 178, 178);
+}
+
+#contacts #urls {
+    margin-top: 0.5em;
+}
+
+#forms {
+    margin-top: 2em;
+    font-size: 0.85em;
+}
+
+#forms .bug {
+    color: rgb(255, 101, 101);
+    border-bottom: 1px dashed rgb(255, 51, 51);
+}
+
+.box {
+    display: inline-block;
+    margin-bottom: -0.15em;
+    margin-left: 2px;
+}
+
+#ege-chart .box {
+    width: 0.75em;
+    height: 0.75em;
+    margin-right: 0.2em;
+    margin-bottom: 0em;
+}
+
+#ege-chart .box.school {
+    background: rgba(70, 130, 180, 0.4);
+    border: 1px solid rgb(70, 130, 180)
+}
+
+#ege-chart .box.moscow {
+    background: rgba(179, 178, 178, 0.4);
+    border: 1px solid rgb(179, 178, 178);
+}
+
+.axis path,
+.axis line {
+    fill: none;
+    stroke: black;
+    shape-rendering: crispEdges;
+}
+
+#olympiads table td {
+    vertical-align: top;
+    padding-right: 0.2em;
+}
+
+#olympiads .row {
+    margin-top: 0.5em;
+}
+
+#olympiads .box {
+    width: 1em;
+    height: 1em;
+    border-radius: 50%;
+}
+
+.moscow-1, .russia-1 {
+    background: rgba(255, 191, 0, 0.4);
+    border: 1px solid rgb(255, 191, 0);
+}
+
+.moscow-2, .russia-2 {
+    background: rgba(200, 200, 200, 0.4);
+    border: 1px solid rgb(200, 200, 200);
+}
+
+.box img {
+    height: 0.5em;
+    margin-top: 0.14em;
+    margin-left: 0.18em;
+    position: absolute;
+}
+
+#universities .student {
+    margin-left: 1px;
+    background: rgba(70, 130, 180, 0.4);
+    border-bottom: 1px solid rgb(70, 130, 180);
+    width: 2px;
+    height: 1em;
+}
+
+#universities table td,
+#teachers table td {
+    padding-right: 0.2em;
+    padding-top: 0.4em;
+    vertical-align: top;
+    line-height: 1.2;
+}
+
+#teachers .box {
+    width: 0.75em;
+    height: 1em;
+    background: rgba(70, 130, 180, 0.4);
+    color: rgba(70, 130, 180, 0.6);
+    border-bottom: 1px solid rgb(70, 130, 180);
+}
+
+.category-high img {
+    height: 0.5em;
+    margin-top: 0.2em;
+    margin-left: 0.15em;
+    position: absolute;
+}
+
+.category-1 span {
+    font-size: 0.7em;
+    font-weight: bold;
+    margin-left: 0.3em;
+    position: absolute;
+}
+
+.category-unknown span {
+    font-size: 0.6em;
+    font-weight: bold;
+    margin-top: 0.3em;
+    margin-left: 0.3em;
+    position: absolute;
+}
+
+#images {
+    margin-top: 1.5em;
+}
+
+.chromatic-gallery-photo {
+    margin: 1px;
+    cursor: pointer;
+}
+
+.chromatic-gallery {
+    margin: -2px;
+    padding: 0;
+}
+
+#images div {
+    height: 250px;
+}
+
+#images-source {
+    text-align: right;
+    font-size: 0.85em;
+}
+
+
+#footer {
+    margin-top: 0.5em;
+    margin-bottom: 2em;
+    font-size: 0.85em;
+}
+
+#form #thanks {
+    display: none;
+}
+
+.review {
+    margin-top: 0.5em;
+}
+
+.review .meta {
+    text-align: right;
+    font-size: 0.85em;
+}
+
+.review .source {
+    text-align: right;
+    font-size: 0.85em;
+}
+
+.poll {
+    margin-top: 0.5em;
+}
+
+.poll .answer .votes {
+    font-size: 3em;
+    margin-top: -0.2em;
+}
+
+#list table {
+    width: 40em;
+}
+
+#list table th {
+    font-weight: normal;
+}
+
+#list table .rating {
+    width: 20%;
+}
+
+#list table td.rating {
+    text-align: right;
+}
+
+#list table .title {
+    width: 80%;
+}
+
+#list table td, #list table th {
+    padding-right: 0.5em;
+    padding-left: 0.5em;
+    padding-bottom: 0.5em;
+    vertical-align: top;
+}
+
+#list table th.sort-header {
+    cursor: pointer;
+}
+
+#list table th.sort-header:after {
+  content: '';
+  float: right;
+  margin-top: 0.6em;
+  margin-bottom: -1em;
+  border-width: 0 4px 4px;
+  border-style: solid;
+  border-color: #404040 transparent;
+  visibility: hidden;
+}
+
+#list table th.sort-header:hover:after {
+    visibility: visible;
+}
+
+#list table th.sort-up:after,
+#list table th.sort-down:after,
+#list table th.sort-down:hover:after {
+    visibility:visible;
+    opacity:0.4;
+}
+
+#list table th.sort-up:after {
+    border-bottom:none;
+    border-width:4px 4px 0;
+}
+
+#pupils-teachers .bar,
+#salaries .bar {
+    shape-rendering: crispEdges;
+    fill: rgba(179, 178, 178, 0.3);
+}
+
+#pupils-teachers text,
+#salaries text {
+    font-size: 15px;
+}
+
+
+#pupils-teachers .share,
+#salaries .salary {
+    stroke-width: 1px;
+    shape-rendering: crispEdges;
+    stroke: rgba(70, 130, 180, 0.8)
+}
