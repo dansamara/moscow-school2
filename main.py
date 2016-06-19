@@ -13,6 +13,8 @@ from collections import defaultdict, namedtuple, Counter
 from subprocess import check_call
 from random import sample
 from datetime import datetime
+import xml.etree.ElementTree as ET
+from math import ceil
 
 import pandas as pd
 from bs4 import BeautifulSoup
@@ -27,10 +29,13 @@ rc('font', family='Verdana', weight='normal')
 import requests
 requests.packages.urllib3.disable_warnings()
 
-from jinja2 import Template
+from jinja2 import Environment, Template
 
 import pyphen
 HYPHEN = pyphen.Pyphen(lang='ru_RU')
+
+import site; site.addsitedir("/usr/local/lib/python2.7/site-packages")
+import cv2
 
 
 HEADERS = {
@@ -46,12 +51,17 @@ EDUOFFICE_IDS_URL = 'http://map.development.mskobr.ru/api/eduoffice/points.json'
 EDUOFFICE_DIR = os.path.join(DATA_DIR, 'data.mskobr', 'accounting')
 EDUOFFICE_REPORT_DIR = os.path.join(DATA_DIR, 'data.mskobr', 'export')
 EDUOFFICES_CHECK = os.path.join(CHECKS_DIR, 'eduoffices.xlsx')
+SAD_CHECKS = os.path.join(CHECKS_DIR, 'sads.xlsx')
 
 MSKOBR_DIR = os.path.join(DATA_DIR, 'mskobr')
 MSKOBR_URL_MENUS = os.path.join(MSKOBR_DIR, 'url_menus.json')
 MSKOBR_URL_STAFF = os.path.join(MSKOBR_DIR, 'url_staff.json')
+MSKOBR_SAD_URL_STAFF = os.path.join(MSKOBR_DIR, 'sad_url_staff.json')
 MSKOBR_URL_TEACHER_URLS = os.path.join(MSKOBR_DIR, 'url_teacher_urls.json')
 MSKOBR_TEACHERS = os.path.join(MSKOBR_DIR, 'teachers.json')
+MSKOBR_SAD_TEACHERS = os.path.join(MSKOBR_DIR, 'sad_teachers.json')
+MSKOBR_REVIEWS = os.path.join(MSKOBR_DIR, 'reviews.json')
+
 PODGON = os.path.join(DATA_DIR, 'podgon.xlsx')
 PODGON_HOST_ALIASES = {
     'couz117.mskobr.ru': 'sch117.mskobr.ru',
@@ -64,6 +74,7 @@ PODGON_HOST_ALIASES = {
 ADDRESSES_DIR = os.path.join(DATA_DIR, 'geocode')
 ADDRESSES_LIST = os.path.join(ADDRESSES_DIR, 'list.txt')
 ADDRESSES_CHECK = os.path.join(CHECKS_DIR, 'addresses.xlsx')
+SAD_ADDRESSES_CHECK = os.path.join(CHECKS_DIR, 'sad_addresses.xlsx')
 
 MSKOBR_URL_PENNANTS = os.path.join(MSKOBR_DIR, 'url_pennants.json')
 RATING_2015_URLS = [
@@ -80,7 +91,7 @@ EGE_DISTRIBUTIONS_CHECK = os.path.join(CHECKS_DIR, 'ege.xlsx')
 OLYMPIADS_CHECK = os.path.join(CHECKS_DIR, 'olympiads.xlsx')
 
 # https://oauth.vk.com/authorize?client_id=5006136&redirect_uri=https://oauth.vk.com/blank.html&display=page&response_type=token 
-VK_TOKEN = 'e6a2fb04c30a66fe3d84a4274aac769a0944a2d51d4a8d9baabd4e164b3d8f4adf25ab1850756b257c837'
+VK_TOKEN = 'c81d246133949a8514d52b21b7c9c9804f07f0f457ad687228edf41c5ea0152d536948f376ea5d58409cb'
 VK_DIR = os.path.join(DATA_DIR, 'vk')
 VK_SCHOOL_IDS = os.path.join(VK_DIR, 'school_ids.xlsx')
 VK_PUPILS_DIR = os.path.join(VK_DIR, 'pupils')
@@ -89,15 +100,20 @@ UNIVERSITIES_CHECK = os.path.join(CHECKS_DIR, 'universities.xlsx')
 
 CHECK_CONTACTS = os.path.join(CHECKS_DIR, 'contacts.xlsx')
 CHECK_TEACHERS = os.path.join(CHECKS_DIR, 'teachers.xlsx')
+TEACHERS_STAFF_CHECK = os.path.join(CHECKS_DIR, 'teachers_staff.xlsx')
+SAD_TEACHERS_CHECK = os.path.join(CHECKS_DIR, 'sad_teachers.xlsx')
 
 GALLERY_IMAGES = os.path.join(DATA_DIR, 'gallery_images.json')
+SAD_GALLERY_IMAGES = os.path.join(DATA_DIR, 'sad_gallery_images.json')
 CHECK_IMAGES_DIR = os.path.join(CHECKS_DIR, 'images')
 CHECK_IMAGES = os.path.join(CHECKS_DIR, 'images.xlsx')
+CHECK_SAD_IMAGES = os.path.join(CHECKS_DIR, 'sad_images.xlsx')
 
 VIZ_DIR = 'viz'
 SCHOOL_TEMPLATE = os.path.join(VIZ_DIR, 'school.html')
 INDEX_TEMPLATE = os.path.join(VIZ_DIR, 'index.html')
 LIST_TEMPLATE = os.path.join(VIZ_DIR, 'list.html')
+SAD_TEMPLATE = os.path.join(VIZ_DIR, 'sad.html')
 SITE_DIR = os.path.join(VIZ_DIR, 'site')
 INDEX = os.path.join(SITE_DIR, 'index.html')
 LIST = os.path.join(SITE_DIR, 'list.html')
@@ -181,7 +197,7 @@ REVIEWS_CHECK = os.path.join(CHECKS_DIR, 'reviews.xlsx')
 REVIEW_MONTHS = {
     1: u'январь',
     2: u'февраль',
-    3: u'март',
+    3: u'марnт',
     4: u'апрель',
     5: u'май',
     6: u'июнь',
@@ -191,6 +207,20 @@ REVIEW_MONTHS = {
     10: u'октябрь',
     11: u'ноябрь',
     12: u'декабрь',
+}
+MSKOBR_REVIEW_MONTHS = {
+    u'января': 1,
+    u'февраля': 2,
+    u'марта': 3,
+    u'апреля': 4,
+    u'мая': 5,
+    u'июня': 6,
+    u'июля': 7,
+    u'августа': 8,
+    u'сентября': 9,
+    u'октября': 10,
+    u'ноября': 11,
+    u'декабря': 12,
 }
 MAIL_LOGIN = 'ak@obr.msk.ru'
 MAIL_PASSWORD = os.environ.get('AK_MAIL_PASSWORD')
@@ -203,6 +233,22 @@ EDUOFFICE_REPORT_CHECK = os.path.join(CHECKS_DIR, 'eduoffice_reports.xlsx')
 BUS_DIR = os.path.join(DATA_DIR, 'bus')
 BUS_SEARCH_DIR = os.path.join(BUS_DIR, 'search')
 BUS_REPORT_DIR = os.path.join(BUS_DIR, 'report')
+
+BIN_DIR = 'bin'
+TOMITA_BIN = os.path.join(BIN_DIR, 'tomita-mac')
+ALGFIO_DIR = os.path.join(BIN_DIR, 'algfio')
+ALGFIO_TEXT = os.path.join(ALGFIO_DIR, 'text.txt')
+ALGFIO_FACTS = os.path.join(ALGFIO_DIR, 'facts.xml')
+ALGFIO_CONFIG = os.path.join(ALGFIO_DIR, 'config.proto')
+TOMITA_DATA_DIR = os.path.join(DATA_DIR, 'tomita')
+ALGFIO_DATA_DIR = TOMITA_DATA_DIR
+ALGFIO_LIST = os.path.join(ALGFIO_DATA_DIR, 'list.txt')
+
+CHECK_SAD_ALGFIO_REVIEWS = os.path.join(CHECKS_DIR, 'sad_algfio_reviews.xml')
+
+PHOTO_DIR = os.path.join(IMAGES_DIR, 'photo')
+
+HAAR_CASCADE = os.path.join(DATA_DIR, 'haarcascade_frontalface_default.xml')
 
 
 Coordinates = namedtuple('Coordinates', ['latitude', 'longitude'])
@@ -220,7 +266,7 @@ Eduoffice = namedtuple(
 )
 CheckEduofficeRecord = namedtuple(
     'CheckEduofficeRecord',
-    ['url', 'title', 'short']
+    ['url', 'title', 'short', 'no']
 )
 CheckAddressRecord = namedtuple(
     'CheckAddressRecord',
@@ -277,7 +323,14 @@ CheckTeachersRecord = namedtuple(
     'CheckTeachersRecord',
     ['url', 'subject', 'name', 'category']
 )
-
+CheckTeachersStaffRecord = namedtuple(
+    'CheckTeachersStaffRecord',
+    ['url', 'name', 'position']
+)
+CheckSadTeachersRecord = namedtuple(
+    'CheckSadTeachersRecord',
+    ['url', 'name', 'position', 'image']
+)
 
 MskobrMenuItem = namedtuple(
     'MskobrMenuItem',
@@ -310,18 +363,21 @@ Image = namedtuple('Image', ['url', 'filename', 'raw', 'thumb'])
 
 VizSchoolTitles = namedtuple(
     'VizSchoolTitles',
-    ['full', 'short', 'label', 'link']
+    ['full', 'short', 'label', 'link', 'no']
 )
 VizSchoolRating = namedtuple(
     'VizSchoolRating',
     ['year_2013', 'year_2014', 'year_2015']
 )
 
+PROGRAM_0_1 = 'program_0_1'
 PROGRAM_1_4 = 'program_1_4'
+PROGRAM_1_7 = 'program_1_7'
+PROGRAM_1_9 = 'program_1_9'
+PROGRAM_1_11 = 'program_1_11'
 PROGRAM_5_11 = 'program_5_11'
 PROGRAM_6_11 = 'program_6_11'
-PROGRAM_1_11 = 'program_1_11'
-PROGRAM_1_9 = 'program_1_9'
+PROGRAM_8_11 = 'program_8_11'
 PROGRAM_10_11 = 'program_10_11'
 VizSchoolAdress = namedtuple(
     'VizSchoolAdress',
@@ -428,7 +484,7 @@ VizTeacher = namedtuple(
 
 VizSchool = namedtuple(
     'VizSchool',
-    ['url', 'title', 'rating', 'programs', 'addresses',
+    ['url', 'sad_link', 'title', 'rating', 'programs', 'addresses',
      'ege', 'olympiads', 'universities', 'contacts',
      'teachers', 'images', 'reviews', 'polls', 'eduoffice_report']
 )
@@ -528,7 +584,7 @@ EduofficeReportSalaries = namedtuple(
 )
 EduofficeReportCheckRecord = namedtuple(
     'EduofficeReportCheckRecord',
-    ['host', 'pupils', 'teachers', 'salaries']
+    ['host', 'pupils', 'teachers', 'salaries', 'incoming']
 )
 
 BusSearchRecord = namedtuple(
@@ -550,6 +606,68 @@ BusReportIncomingsRecord = namedtuple(
 BusReportExpensesRecord = namedtuple(
     'BusReportExpensesRecord',
     ['total', 'salaries', 'gkh']
+)
+
+MskobrReviewRecord = namedtuple(
+    'MskobrReviewRecord',
+    ['date', 'author', 'text']
+)
+MskobrReviewsRecord = namedtuple(
+    'MskobrReviewsRecord',
+    ['url', 'reviews']
+)
+
+Name = namedtuple(
+    'Name',
+    ['last', 'first', 'middle']
+)
+
+AlgfioTomitaFact = namedtuple(
+    'AlgfioTomitaFact',
+    ['start', 'size', 'substring', 'last', 'first', 'middle', 'known_surname']
+)
+TeacherMention = namedtuple(
+    'TeacherMention',
+    ['start', 'size', 'substring', 'name', 'teacher']
+)
+AlgfioFact = namedtuple(
+    'AlgfioFact',
+    ['start', 'size', 'name']
+)
+AlgfioReviewCheckRecord = namedtuple(
+    'AlgfioReviewCheckRecord',
+    ['url', 'author', 'date', 'text', 'facts']
+)
+
+SadCheckRecord = namedtuple(
+    'SadCheckRecord',
+    ['url', 'name']
+)
+SadTeacherMention = namedtuple(
+    'SadTeacherMention',
+    ['start', 'size', 'teacher', 'exact', 'sad']
+)
+
+VizSadAddress = namedtuple(
+    'VizSadAddress',
+    ['address', 'latitude', 'longitude']
+)
+VizSadTitle = namedtuple(
+    'VizSadTitle',
+    ['full', 'link']
+)
+VizTeacherMentions = namedtuple(
+    'VizTeacherMentions',
+    ['url', 'name', 'image', 'position', 'mentions', 'sample']
+)
+VizSadReview = namedtuple(
+    'VizSadReview',
+    ['id', 'author', 'date', 'html']
+)
+VizSad = namedtuple(
+    'VizSad',
+    ['url', 'title', 'school', 'addresses', 'contacts',
+     'teacher_mentions', 'reviews', 'images', 'incoming']
 )
 
 
@@ -936,8 +1054,8 @@ def dump_eduoffices_check(eduoffices, path=EDUOFFICES_CHECK):
 def load_eduoffices_check():
     data = read_excel(EDUOFFICES_CHECK)
     for index, row in data.iterrows():
-        url, title, short = row
-        yield CheckEduofficeRecord(url, title, short)
+        url, title, short, no = row
+        yield CheckEduofficeRecord(url, title, short, no)
 
 
 def get_soup(html):
@@ -988,7 +1106,8 @@ def load_url_menus():
     return url_menus
 
 
-def load_raw_url_staff_urls(urls, url_menus):
+def load_raw_url_staff_urls(urls, url_menus, include_base=True,
+                            programs=(u'Начальное', u'Основное и среднее')):
     def get_link(soup):
         return (
             soup.find(
@@ -1000,15 +1119,16 @@ def load_raw_url_staff_urls(urls, url_menus):
 
     url_staff = {}
     for base in urls:
-        html = load_html(base)
-        soup = get_soup(html)
-        link = get_link(soup)
-        if link:
-            staff = join_url(base, link['href'])
-            url_staff[base] = staff
+        if include_base:
+            html = load_html(base)
+            soup = get_soup(html)
+            link = get_link(soup)
+            if link:
+                staff = join_url(base, link['href'])
+                url_staff[base] = staff
         menu = url_menus[base]
         for item in menu:
-            if item.program in (u'Начальное', u'Основное и среднее'):
+            if item.program in programs:
                 url = item.url
                 html = load_html(url)
                 soup = get_soup(html)
@@ -1019,12 +1139,12 @@ def load_raw_url_staff_urls(urls, url_menus):
     return url_staff
 
 
-def dump_url_staff(url_staff):
-    dump_json(url_staff, MSKOBR_URL_STAFF)
+def dump_url_staff(url_staff, path=MSKOBR_URL_STAFF):
+    dump_json(url_staff, path)
 
 
-def load_url_staff():
-    return load_json(MSKOBR_URL_STAFF)
+def load_url_staff(path=MSKOBR_URL_STAFF):
+    return load_json(path)
 
 
 def load_raw_url_teacher_urls(urls):
@@ -1043,12 +1163,12 @@ def load_raw_url_teacher_urls(urls):
     return url_teachers
 
 
-def dump_url_teacher_urls(url_teacher_urls):
-    dump_json(url_teacher_urls, MSKOBR_URL_TEACHER_URLS)
+def dump_url_teacher_urls(url_teacher_urls, path=MSKOBR_URL_TEACHER_URLS):
+    dump_json(url_teacher_urls, path)
     
 
-def load_url_teacher_urls():
-    return load_json(MSKOBR_URL_TEACHER_URLS)
+def load_url_teacher_urls(path=MSKOBR_URL_TEACHER_URLS):
+    return load_json(path)
 
 
 def load_raw_mskobr_teachers(urls):
@@ -1082,12 +1202,12 @@ def load_raw_mskobr_teachers(urls):
             )
 
 
-def dump_mskobr_teachers(teachers):
-    dump_json(teachers, MSKOBR_TEACHERS)
+def dump_mskobr_teachers(teachers, path=MSKOBR_TEACHERS):
+    dump_json(teachers, path)
 
 
-def load_mskobr_teachers():
-    data = load_json(MSKOBR_TEACHERS)
+def load_mskobr_teachers(path=MSKOBR_TEACHERS):
+    data = load_json(path)
     return [MskobrTeacherRecord(*_) for _ in data]
 
 
@@ -1615,8 +1735,8 @@ def dump_addresses_check(eduoffices_selection, url_menus, eduoffices, addresses)
     table.to_excel(ADDRESSES_CHECK, index=False)
             
 
-def load_address_check():
-    table = read_excel(ADDRESSES_CHECK)
+def load_address_check(path=ADDRESSES_CHECK):
+    table = read_excel(path)
     for index, row in table.iterrows():
         program, address, latitude, longitude, url = row
         if latitude and longitude:
@@ -1754,7 +1874,7 @@ def get_common_prefix(strings):
 
 def get_viz_schools(eduoffices_selection, eduoffices, ratings, school_addresses,
                     ege, olympiads, url_universities, contacts, teachers,
-                    images, reviews, polls, eduoffice_reports):
+                    images, reviews, polls, eduoffice_reports, sad_selection):
     host_eduoffices = {get_host(_.url): _ for _ in eduoffices if _.url}
     host_rating = {get_host(_.url): _ for _ in ratings}
 
@@ -1815,6 +1935,10 @@ def get_viz_schools(eduoffices_selection, eduoffices, ratings, school_addresses,
             program = PROGRAM_1_9
         elif program == '10..11':
             program = PROGRAM_10_11
+        elif program == '8..11':
+            program = PROGRAM_8_11
+        elif program == '1..7':
+            program = PROGRAM_1_7
         else:
             assert False, (host, program)
         host_addresses[host].add(VizSchoolAdress(
@@ -1880,6 +2004,11 @@ def get_viz_schools(eduoffices_selection, eduoffices, ratings, school_addresses,
         for _ in eduoffice_reports
     }
 
+    host_sads = set()
+    for record in sad_selection:
+        host = get_host(record.url)
+        host_sads.add(host)
+
     for record in eduoffices_selection:
         host = get_host(record.url)
         eduoffice = host_eduoffices[host]
@@ -1888,6 +2017,11 @@ def get_viz_schools(eduoffices_selection, eduoffices, ratings, school_addresses,
         short_title = record.title
         label_title = record.short
         link_title = re.match(r'([\w\d-]+)\.mskobr\.ru', host).group(1)
+        no_title = record.no
+
+        sad_link = None
+        if host in host_sads:
+            sad_link = link_title + '-sad.html'
         
         rating = host_rating[host]
         addresses = list(host_addresses[host])
@@ -1907,11 +2041,13 @@ def get_viz_schools(eduoffices_selection, eduoffices, ratings, school_addresses,
 
         yield VizSchool(
             record.url,
+            sad_link,
             VizSchoolTitles(
                 full_title,
                 short_title,
                 label_title,
-                link_title
+                link_title,
+                no_title
             ),
             VizSchoolRating(
                 rating.year_2013,
@@ -2122,6 +2258,7 @@ def generate_school_page(school, template):
         full_title=title.short,
         label_title=title.label,
         link=link,
+        sad_link=school.sad_link,
         path=page,
 
         rating_2013=rating.year_2013,
@@ -2134,6 +2271,8 @@ def generate_school_page(school, template):
         program_1_11=(PROGRAM_1_11 in programs),
         program_1_9=(PROGRAM_1_9 in programs),
         program_10_11=(PROGRAM_10_11 in programs),
+        program_1_7=(PROGRAM_1_7 in programs),
+        program_8_11=(PROGRAM_8_11 in programs),
         addresses=school.addresses,
 
         ege_source=ege_source,
@@ -2184,14 +2323,31 @@ def format_salary(salary):
 
 def generate_school_pages(schools):
     template = load_text(SCHOOL_TEMPLATE)
-    template = Template(template)
-    template.environment.filters['format_salary'] = format_salary
+    env = Environment()
+    env.filters['format_salary'] = format_salary
+    template = env.from_string(template)
     for school in schools:
         generate_school_page(school, template)
 
 
-def generate_index(schools):
+def generate_index(schools, sads):
     records = []
+    for sad in sads:
+        url = sad.title.link + '.html'
+        title = sad.title.full
+        addresses = sad.addresses
+        addresses = [
+            (
+                _.address, _.latitude, _.longitude, PROGRAM_0_1,
+                0 if len(addresses) == 1 else index + 1
+            )
+            for index, _ in enumerate(addresses)
+        ]
+        records.append((
+            url, title,
+            addresses
+        ))
+
     for school in schools:
         url = school.title.link + '.html'
         title = school.title.short
@@ -2207,26 +2363,35 @@ def generate_index(schools):
             url, title,
             addresses
         ))
+    
     template = load_text(INDEX_TEMPLATE)
     template = Template(template)
     html = template.render(records=records)
     dump_text(html, INDEX)
 
 
-def generate_list(schools):
+def generate_list(schools, sads):
     records = []
     schools = sorted(
         schools,
         key=lambda _: _.rating.year_2015 or float('inf')
     )
+    host_sads = {
+        get_host(_.url): _
+        for _ in sads
+    }
     for school in schools:
         path = school.title.link + '.html'
         title = school.title.short
         url = school.url
         host = get_host(url)
+        sad_path = None
+        if host in host_sads:
+            sad = host_sads[host]
+            sad_path = sad.title.link + '.html'
         rating = school.rating.year_2015
         records.append((
-            path, title, host, url,
+            path, sad_path, title, host, url,
             rating
         ))
     template = load_text(LIST_TEMPLATE)
@@ -2767,6 +2932,36 @@ def parse_teacher_position(position):
             return None
 
 
+def parse_sad_teacher_position(position):
+    position = position.lower()
+    if u'воспитат' in position:
+        if u'старш' in position:
+            return u'Старший воспитатель'
+        elif u'помощ' in position:
+            return u'Помощник воспитателя'
+        else:
+            return u'Воспитатель'
+    elif u'муз' in position:
+        return u'Муз. рук.'
+    elif u'логопед' in position:
+        return u'Логопед'
+    elif u'псих' in position:
+        return u'Психолог'
+    elif (u'физиче' in position or u'физк' in position
+          or u'физо' in position or u'плаван' in position):
+        return u'Физ. рук.'
+    elif u'метод' in position:
+        return u'Методист'
+    elif u'завхо' in position or u'хозяй' in position:
+        return u'Завхоз'
+    elif u'дефект' in position:
+        return u'Дефектолог'
+    elif u'руководит' in position:
+        return u'Руководитель'
+    else:
+        return None
+
+
 def unique_teachers(teachers):
     return {(get_host(_.url), _.name): _ for _ in teachers}.values()
 
@@ -2799,13 +2994,15 @@ def load_teachers_check(path=CHECK_TEACHERS):
         yield CheckTeachersRecord(*row)
 
 
-def get_raw_url_galleries(urls, url_menus):
+def get_raw_url_galleries(urls, url_menus, include_base=True,
+                          programs=(u'Начальное', u'Основное и среднее')):
     url_galleries = {}
     for base in urls:
         menu = url_menus[base]
-        for url in [base] + [_.url for _ in menu
-                             if _.program in (u'Начальное',
-                                              u'Основное и среднее')]:
+        menu_urls = [_.url for _ in menu if _.program in programs]
+        if include_base:
+            menu_urls += [base]
+        for url in menu_urls:
             html = load_html(url)
             soup = get_soup(html)
             link = (soup.find('a', text=u'Фотогалерея')
@@ -2835,27 +3032,28 @@ def get_url_gallery_urls(urls, url_galleries):
     return url_gallery_urls
 
 
-def get_url_image_urls(urls, url_gallery_urls):
+def get_url_image_urls(gallery_urls, url_gallery_urls):
     url_image_urls = {}
-    for url in urls:
-        html = load_html(url)
-        soup = get_soup(html)
-        base = 'http://' + get_host(url)
-        image_urls = []
-        for item in soup.find_all('div', class_='kris-album-item-in'):
-            link = item.find('a')
-            image_url = join_url(base, link['href'])
-            image_urls.append(image_url)
-        url_image_urls[url] = image_urls
+    for gallery_url in gallery_urls:
+        for url in url_gallery_urls[gallery_url]:
+            html = load_html(url)
+            soup = get_soup(html)
+            base = 'http://' + get_host(url)
+            image_urls = []
+            for item in soup.find_all('div', class_='kris-album-item-in'):
+                link = item.find('a')
+                image_url = join_url(base, link['href'])
+                image_urls.append(image_url)
+            url_image_urls[url] = image_urls
     return url_image_urls
 
 
-def dump_gallery_images(gallery_images):
-    dump_json(gallery_images, GALLERY_IMAGES)
+def dump_gallery_images(gallery_images, path=GALLERY_IMAGES):
+    dump_json(gallery_images, path)
 
 
-def load_gallery_images():
-    return load_json(GALLERY_IMAGES)
+def load_gallery_images(path=GALLERY_IMAGES):
+    return load_json(path)
 
 
 def images_check_filename(host):
@@ -2889,8 +3087,8 @@ def dump_images_check_dir(gallery_images):
         dump_text(html, path)
 
 
-def load_images_check():
-    table = read_excel(CHECK_IMAGES)
+def load_images_check(path=CHECK_IMAGES):
+    table = read_excel(path)
     for cell in table.url:
         parts = cell.split()
         url = parts[-1]
@@ -2921,7 +3119,7 @@ def get_image_path(url):
 
 def download_image(url):
     path = get_image_path(url)
-    check_call(['wget', '--header', 'User-Agent: Mozilla/5.0', url, '-O', path])
+    check_call(['wget', '--user-agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:21.0) Gecko/20100101 Firefox/21.0', url, '-O', path])
 
 
 def download_images(urls):
@@ -3071,7 +3269,8 @@ def load_raw_schoolotzyv_reviews(records):
 
 
 def dump_datetime(datetime):
-    return datetime.strftime('%Y-%m-%d')
+    if datetime:
+        return datetime.strftime('%Y-%m-%d')
 
 
 def dump_schoolotzyv_reviews(records):
@@ -3420,8 +3619,11 @@ def dump_eduoffice_report_check(host_id, eduoffice_reports):
 def load_eduoffice_report_check():
     table = read_excel(EDUOFFICE_REPORT_CHECK)
     for index, row in table.iterrows():
-        host, pupils, teachers, salaries = row
-        yield EduofficeReportCheckRecord(host, pupils, teachers, salaries)
+        host, pupils, teachers, salaries, incoming_total, incoming_from_0 = row
+        yield EduofficeReportCheckRecord(
+            host, pupils, teachers, salaries,
+            EduofficeReportIncoming(incoming_total, incoming_from_0)
+        )
 
 
 def get_bus_search_url(inn):
@@ -3500,7 +3702,7 @@ def parse_bus_report_years(id, data):
 
 
 def load_bus_report_years(id):
-    path = get_bus_lastest_report_path(id)
+    path = get_bus_latest_report_path(id)
     data = load_json(path)
     return parse_bus_report_years(id, data)
 
@@ -3567,3 +3769,1027 @@ def load_bus_report(id, year):
     path = get_bus_report_path(id, year)
     data = load_json(path)
     return parse_bus_report(id, data)
+
+
+def get_url_review_urls(urls):
+    url_review_urls = {}
+    for url in urls:
+        html = load_html(url)
+        soup = get_soup(html)
+        link = (soup.find('a', text=u'Отзывы об учреждении')
+                or soup.find('a', text=u'Отзывы о комплексе'))
+        if link:
+            review_url = join_url(url, link['href'])
+            url_review_urls[url] = review_url
+    return url_review_urls
+
+
+def parse_mskobr_review_meta(meta):
+    match = re.search(ur'^(\d+) (\w+) (\d+) в [:\d]+\s+(.+)$', meta, re.U | re.M)
+    if match:
+        day, month, year, author = match.groups()
+        day = int(day)
+        month = MSKOBR_REVIEW_MONTHS[month]
+        year = int(year)
+        date = datetime(day=day, month=month, year=year)
+        return date, author
+    return None, None
+
+    
+def load_mskobr_reviews_page(url):
+    html = load_html(url)
+    soup = get_soup(html)
+    for item in soup.find_all('div', class_='kris-ques-otziv'):
+        text = item.find('div', class_='kris-quesman-bot')
+        if text:
+            text = text.text
+        meta = item.find('div', class_='kris-quesman-dt-name')
+        date = None
+        author = None
+        if meta:
+            date, author = parse_mskobr_review_meta(meta.text)
+        yield MskobrReviewRecord(date, author, text)
+
+        
+def change_mskobr_review_page(url, page):
+    return '{url}?p={page}'.format(url=url, page=page)
+
+
+def load_raw_mskobr_reviews(urls):
+    for review_url in urls:
+        reviews = []
+        for page in xrange(0, 1000):
+            url = change_mskobr_review_page(review_url, page=page)
+            if url not in cache:
+                fetch_url(url)
+            records = list(load_mskobr_reviews_page(url))
+            if not records:
+                break
+            reviews.extend(records)
+        yield MskobrReviewsRecord(review_url, reviews)
+
+
+def dump_mskobr_reviews(mskobr_reviews):
+    data = []
+    for url, reviews in mskobr_reviews:
+        reviews = [
+            (dump_datetime(_.date), _.author, _.text)
+            for _ in reviews
+        ]
+        data.append((url, reviews))
+    dump_json(data, MSKOBR_REVIEWS)
+
+
+def load_mskobr_reviews():
+    data = load_json(MSKOBR_REVIEWS)
+    for url, reviews in data:
+        reviews = [
+            MskobrReviewRecord(
+                parse_datetime(date) if date else None,
+                author, text
+            )
+            for date, author, text in reviews
+        ]
+        yield MskobrReviewsRecord(url, reviews)
+
+
+def parse_teacher_name(name):
+    match = re.search(ur'^\s*(\w+)[^\w]+(\w+)[^\w]+(\w+)', name, re.U)
+    if match:
+        last, first, middle = match.groups()
+        return Name(last, first, middle)
+
+
+def parse_algfio_tomita_facts(text, xml):
+    tree = ET.fromstring(xml.encode('utf8'))
+    document = tree.find('document')
+    if document is None:
+        return
+    facts = document.find('facts')
+    for item in facts.findall('Person'):
+        start = int(item.get('pos'))
+        size = int(item.get('len'))
+        substing = text[start:start + size]
+        last = item.find('Name_Surname')
+        if last is not None:
+            last = last.get('val') or None
+        first = item.find('Name_FirstName')
+        if first is not None:
+            first = first.get('val')
+        middle = item.find('Name_Patronymic')
+        if middle is not None:
+            middle = middle.get('val')
+        known_surname = item.find('Name_SurnameIsDictionary')
+        if known_surname is not None:
+            known_surname = int(known_surname.get('val'))
+        known_surname = bool(known_surname)
+        yield AlgfioTomitaFact(
+            start, size, substing, last, first, middle, known_surname
+        )
+        
+        
+def run_algfio_tomita(text):
+    dump_text(text, ALGFIO_TEXT)
+    bin = os.path.relpath(TOMITA_BIN, ALGFIO_DIR)
+    config = os.path.relpath(ALGFIO_CONFIG, ALGFIO_DIR)
+    check_call([bin, config], cwd=ALGFIO_DIR)
+    xml = load_text(ALGFIO_FACTS)
+    for record in parse_algfio_tomita_facts(text, xml):
+        yield record
+
+
+def br(text):
+    return text.replace('\n', '<br/>')
+
+
+def display_tomite_facts(text, facts):
+    from IPython.display import HTML, display
+
+    CLOSING = 'closing'
+    OPENING = 'opening'
+    COLOR = '#ffffc2'
+
+    tags = defaultdict(list)
+    for fact in facts:
+        start = fact.start
+        stop = start + fact.size
+        tags[start].append((OPENING, COLOR))
+        tags[stop].append((CLOSING, None))
+    chunks = []
+    previous = 0
+    for index in sorted(tags):
+        chunk = br(text[previous:index])
+        chunks.append(chunk)
+        previous = index
+        for tag, color in tags[index]:
+            if tag == OPENING:
+                chunk = ('<span style="background-color:{color}">'.format(
+                    color=color
+                ))
+            elif tag == CLOSING:
+                chunk = '</span>'
+            chunks.append(chunk)
+    if tags:
+        chunks.append(br(text[index:]))
+    else:
+        chunks.append(br(text))
+    html = ''.join(chunks)
+    display(HTML(html))
+
+
+class MorphNormalizer(object):
+    morph = None
+
+    def __init__(self):
+        import pymorphy2
+        self.morph = pymorphy2.MorphAnalyzer()
+        
+    def __call__(self, string):
+        forms = self.morph.normal_forms(string)
+        form = forms[0]
+        return form
+
+    
+class StemNormalizer(object):
+    stemmer = None
+
+    def __init__(self):
+        from nltk.stem.snowball import SnowballStemmer
+        self.stemmer = SnowballStemmer('russian')
+        
+    def __call__(self, string):
+        return self.stemmer.stem(string)
+
+
+def handle_yo(string):
+    return string.replace(u'ё', u'е')
+
+
+def normalize_first_name(first):
+    if first == u'наталия':
+        return u'наталья'
+    return first
+
+
+def build_normal_name(last, first, middle, normalize_word):
+    if last:
+        last = handle_yo(normalize_word(last)).capitalize()
+    if first:
+        first = first.lower()
+        first = normalize_first_name(
+            handle_yo(first)
+        ).capitalize()
+    if middle:
+        middle = middle.lower()
+        middle = handle_yo(middle).capitalize()
+    return Name(last, first, middle)
+
+
+def get_host_teacher_normal_names(teachers, normalize_word):
+    host_teachers = defaultdict(dict)
+    for record in teachers:
+        url = record.url
+        host = get_host(url)
+        name = record.name
+        if name:
+            # some manually added record lack name
+            name = parse_teacher_name(name)
+            if name:
+                name = build_normal_name(
+                    name.last, name.first, name.middle,
+                    normalize_word
+                )
+                host_teachers[host][url] = name
+    return host_teachers
+
+
+hash_text = hash_item
+
+
+def get_algfio_filename(text):
+    return '{hash}.json'.format(
+        hash=hash_text(text)
+    )
+
+
+def get_algfio_path(text):
+    return os.path.join(
+        ALGFIO_DATA_DIR,
+        get_algfio_filename(text)
+    )
+
+
+def list_algfio_cache():
+    with open(ALGFIO_LIST) as file:
+        for line in file:
+            yield line.strip()
+            
+            
+def update_algfio_cache(text):
+    hash = get_algfio_filename(text)
+    with open(ALGFIO_LIST, 'a') as file:
+        file.write(hash + '\n')
+        
+        
+def dump_algfio_facts(text, facts):
+    path = get_algfio_path(text)
+    dump_json(facts, path)
+        
+        
+
+def load_algfio_facts(text):
+    path = get_algfio_path(text)
+    data = load_json(path)
+    for item in data:
+        yield AlgfioTomitaFact(*item)
+    
+
+def convert_algfio_facts(text):
+    facts = list(run_algfio_tomita(text))
+    dump_algfio_facts(text, facts)
+    update_algfio_cache(text)
+    
+
+def display_teacher_mentions(text, mentions):
+    from IPython.display import HTML, display
+
+    CLOSING = 'closing'
+    OPENING = 'opening'
+    COLOR = '#ffffc2'
+
+    tags = defaultdict(list)
+    for mention in mentions:
+        start = mention.start
+        stop = start + mention.size
+        name = mention.name
+        teacher = mention.teacher
+        url = None
+        if teacher:
+            url = teacher.url
+        tags[start].append((OPENING, name, url))
+        tags[stop].append((CLOSING, name, url))
+    chunks = []
+    previous = 0
+    for index in sorted(tags):
+        chunk = br(text[previous:index])
+        chunks.append(chunk)
+        previous = index
+        for tag, name, url in tags[index]:
+            if tag == OPENING:
+                if url:
+                    chunk = (
+                        '<span style="background-color:{color}">'
+                        '<a href="{url}">'.format(
+                            color=COLOR,
+                            url=url
+                    ))
+                else:
+                    chunk = (
+                        '<span style="background-color:{color}">'.format(
+                            color=COLOR
+                    ))
+            elif tag == CLOSING:
+                name = u'({last} {first} {middle})'.format(
+                    last=name.last or '_',
+                    first=name.first or '_',
+                    middle=name.middle or '_'
+                )
+                if url:
+                    chunk = u'</a>{name}</span>'.format(
+                        name=name
+                    )
+                else:
+                    chunk = u'{name}</span>'.format(
+                        name=name
+                    )
+            chunks.append(chunk)
+    if tags:
+        chunks.append(br(text[index:]))
+    else:
+        chunks.append(br(text))
+    html = ''.join(chunks)
+    display(HTML(html))
+
+
+def lookup_teacher_name(name, host, host_teachers, url_teachers, normalize_last=None):
+    teachers = host_teachers.get(host)
+    if not teachers:
+        return
+    if normalize_last:
+        name = build_normal_name(
+            name.last, name.first, name.middle,
+            normalize_last
+        )
+    first = name.first
+    middle = name.middle
+    if first and middle:
+        last = name.last
+        if last is not None:
+            if len(first) == 1 and len(middle) == 1:
+                for url, name in teachers.iteritems():
+                    if name.last == last and name.first[0] == first and name.middle[0] == middle:
+                        yield url_teachers[url]
+            else:
+                for url, name in teachers.iteritems():
+                    if name.last == last and name.first == first and name.middle == middle:
+                        yield url_teachers[url]
+        else:
+            for url, name in teachers.iteritems():
+                if name.first == first and name.middle == middle:
+                    yield url_teachers[url]
+
+           
+def get_robust_sad_teacher_mentions(facts, host, host_sad_teachers, host_teachers,
+                                    url_teachers, normalize_word):
+    for fact in facts:
+        sad_matches = list(lookup_teacher_name(
+            fact, host, host_sad_teachers, url_teachers, normalize_word
+        ))
+        matches = list(lookup_teacher_name(
+            fact, host, host_teachers, url_teachers, normalize_word
+        ))
+        if sad_matches and len(sad_matches) + len(matches) == 1:
+            teacher = sad_matches[0]
+            name = build_normal_name(
+                fact.last, fact.first, fact.middle, normalize_word
+            )
+            yield TeacherMention(
+                fact.start, fact.size, fact.substring,
+                name, teacher
+            )
+ 
+    
+def format_algfio_text(text, facts, normalize_word):
+    CLOSING = 'closing'
+    OPENING = 'opening'
+
+    tags = defaultdict(list)
+    for fact in facts:
+        start = fact.start
+        stop = start + fact.size
+        name = build_normal_name(
+            fact.last,
+            fact.first,
+            fact.middle,
+            normalize_word
+        )
+        if name.first and fact.middle:
+            tags[start].append((OPENING, None))
+            tags[stop].append((CLOSING, name))
+    chunks = []
+    previous = 0
+    for index in sorted(tags):
+        chunk = text[previous:index]
+        chunks.append(chunk)
+        previous = index
+        for tag, name in tags[index]:
+            if tag == OPENING:
+                chunk = '['
+            elif tag == CLOSING:
+                chunk = u']({last} {first} {middle})'.format(
+                    last=name.last or '_',
+                    first=name.first or '_',
+                    middle=name.middle or '_'
+                )
+            chunks.append(chunk)
+    if tags:
+        chunks.append(text[index:])
+    else:
+        chunks.append(text)
+    text = ''.join(chunks)
+    text = text.replace('\r', '').strip()
+    return text
+
+
+def format_sad_algfio_reviews_check(data, normalize_word):
+    yield '<reviews>'
+    for url, review, facts in data:
+        yield '  <review>'
+        yield '    <url>' + url + '</url>'
+        author = review.author
+        if author:
+            yield '    <author>' + author + '</author>'
+        date = review.date
+        if date:
+            yield '    <date>' + dump_datetime(date) + '</date>'
+        content = format_algfio_text(review.text, facts, normalize_word)
+        content = content.replace('<', '&lt;').replace('>', '&gt;').replace('&', '&amp;')
+        yield '    <text>' + content + '</text>'
+        yield '  </review>'
+    yield '</reviews>'
+    
+    
+def dump_sad_algfio_reviews_check(mskobr_reviews, host_sad_teachers, host_teachers, url_teachers, normalize_word):
+    data = []
+    for url, reviews in mskobr_reviews:
+        host = get_host(url)
+        for review in sorted(
+                reviews, key=lambda _: _.date or datetime(1990, 1, 1),
+                reverse=True
+        ):
+            text = review.text
+            if text is None:
+                continue
+            facts = list(load_algfio_facts(text))
+            mentions = list(get_robust_sad_teacher_mentions(
+                facts, host, host_sad_teachers, host_teachers, url_teachers,
+                normalize_word
+            ))
+            if mentions:
+                data.append((url, review, facts))
+
+    with open(CHECK_SAD_ALGFIO_REVIEWS, 'w') as file:
+        for line in format_sad_algfio_reviews_check(data, normalize_word):
+            file.write(line.encode('utf8') + '\n')
+
+
+def parse_algfio_text(content):
+    shift = 0
+    text = ''
+    previous = 0
+    facts = []
+    for match in re.finditer(r'\[(.+?)\]\(([_\w]+) ([_\w]+) ([_\w]+)\)', content, re.U | re.S):
+        substring, last, first, middle = match.groups()
+        if last == '_':
+            last = None
+        if first == '_':
+            first = None
+        if middle == '_':
+            middle = None
+            
+        start = match.start()
+        end = match.end()
+        text += content[previous:start]
+        start = len(text)
+        text += substring
+        previous = end
+        
+        size = len(substring)
+        name = Name(last, first, middle)
+        facts.append(AlgfioFact(
+            start, size, name
+        ))
+    text += content[previous:]
+    return text, facts
+
+
+def load_algfio_reviews_check(path):
+    tree = ET.parse(path)
+    reviews = tree.getroot()
+    for review in reviews.findall('review'):
+        url = review.find('url').text
+        author = review.find('author')
+        if author is not None:
+            author = author.text
+        date = review.find('date')
+        if date is not None:
+            date = parse_datetime(date.text)
+        text, facts = parse_algfio_text(review.find('text').text)
+        yield AlgfioReviewCheckRecord(url, author, date, text, facts)
+
+
+def dump_teachers_staff_check(staff, teachers):
+    data = []
+    urls = {_.url for _ in teachers}
+    for record in staff:
+        url = record.url
+        if url not in urls:
+            data.append((
+                url, record.name, record.position
+            ))
+    table = pd.DataFrame(data, columns=['url', 'name', 'position'])
+    table.to_excel(TEACHERS_STAFF_CHECK, index=False)
+
+
+def load_teachers_staff_check(path):
+    table = read_excel(path)
+    for _, row in table.iterrows():
+        yield CheckTeachersStaffRecord(*row)
+
+
+def load_sad_teachers_check(path):
+    table = read_excel(path)
+    for _, row in table.iterrows():
+        yield CheckSadTeachersRecord(*row)
+
+
+def dump_sad_teachers_check(teachers):
+    data = []
+    for record in teachers:
+        data.append((
+            record.url, record.name, record.position
+        ))
+    table = pd.DataFrame(data, columns=['url', 'name', 'position'])
+    table.to_excel(SAD_TEACHERS_CHECK, index=False)
+
+
+def dump_sads_check(eduoffices_selection, eduoffices):
+    hosts = set()
+    for record in eduoffices:
+        url = record.url
+        if url and u'дошкольное образование' in record.programs:
+            host = get_host(url)
+            hosts.add(host)
+    data = []
+    for record in eduoffices_selection:
+        url = record.url
+        host = get_host(url)
+        if host in hosts:
+            name = record.short
+            if name.startswith(u'Школа'):
+                name = name.replace(u'Школа', u'Дошкольное отделение школы')
+            elif name.startswith(u'Лицей'):
+                name = name.replace(u'Лицей', u'Дошкольное отделение лицея')
+            elif name.startswith(u'Гимназия'):
+                name = name.replace(u'Гимназия', u'Дошкольное отделение гимназии')
+            elif name.startswith(u'Центр образования'):
+                name = name.replace(u'Центр образования', u'Дошкольное отделение центра образования')
+            elif name.startswith(u'Комплекс'):
+                name = name.replace(u'Комплекс', u'Дошкольное отделение комплекса')
+            data.append((url, name))
+    table = pd.DataFrame(data, columns=['url', 'name'])
+    table.to_excel(SAD_CHECKS, index=False)
+        
+
+def load_sads_check():
+    table = read_excel(SAD_CHECKS)
+    for _, row in table.iterrows():
+        yield SadCheckRecord(*row)
+
+
+def dump_sad_addresses_check(sad_selection, url_menus, eduoffices):
+    mapping = {_.url: _ for _ in eduoffices}
+    data = []
+    for record in sad_selection:
+        url = record.url
+        for item in url_menus[url]:
+            if item.program == u'Дошкольное':
+                address = item.address
+                if address in addresses_cache:
+                    address = addresses_cache[address]
+                else:
+                    address = u'Москва ' + address
+                    if address in addresses_cache:
+                        address = addresses_cache[address]
+                    else:
+                        # these are ok to skip actually
+                        address = None
+                if address:
+                    coordinates = address.coordinates
+                    data.append((
+                        '0..1', address.description,
+                        coordinates.latitude, coordinates.longitude,
+                        url
+                        ))
+        if not addresses:
+            eduoffice = mapping[url]
+            address = u'Москва ' + eduoffice.main_address.description
+            address = addresses_cache[address]
+            coordinates = address.coordinates
+            data.append((
+                '0..1', address.description,
+                coordinates.latitude, coordinates.longitude,
+                url
+            ))
+    table = pd.DataFrame(
+        data,
+        columns=['program', 'address', 'latitude', 'longitude', 'url']
+    )
+    table.to_excel(SAD_ADDRESSES_CHECK, index=False)
+
+
+def get_sad_teacher_mentions(facts, host, host_sad_teachers, host_teachers,
+                             url_teachers):
+    for fact in facts:
+        name = fact.name
+        start = fact.start
+        size = fact.size
+        
+        matches = list(lookup_teacher_name(
+            name, host, host_sad_teachers, url_teachers
+        ))
+        exact = len(matches) == 1
+        for teacher in matches:
+            yield SadTeacherMention(start, size, teacher, exact, True)
+        if not matches:
+            matches = list(lookup_teacher_name(
+                name, host, host_teachers, url_teachers
+            ))
+            exact = len(matches) == 1
+            for teacher in matches:
+                yield SadTeacherMention(start, size, teacher, exact, False)
+            
+
+def get_sad_teachers_reviews(sad_algfio_reviews, host_sad_teachers, host_teachers,
+                             url_teachers):
+    for url, author, date, text, facts in sad_algfio_reviews:
+        host = get_host(url)
+        mentions = list(get_sad_teacher_mentions(
+            facts, host, host_sad_teachers, host_teachers, url_teachers
+        ))
+        yield AlgfioReviewCheckRecord(
+            url, author, date, text,
+            mentions
+        )
+
+def format_sad_review_html(text, facts):
+    CLOSING = 'closing'
+    OPENING = 'opening'
+
+    tags = defaultdict(list)
+    for fact in facts:
+        start = fact.start
+        stop = start + fact.size
+        url = fact.teacher.url
+        # TODO same start may refer to different teachers
+        tags[start] = (OPENING, url)
+        tags[stop] = (CLOSING, None)
+    chunks = []
+    previous = 0
+    for index in sorted(tags):
+        chunk = br(text[previous:index])
+        chunks.append(chunk)
+        previous = index
+        tag, url = tags[index]
+        if tag == OPENING:
+            chunk = ('<a href="{url}">'.format(
+                url=url
+            ))
+        elif tag == CLOSING:
+            chunk = '</a>'
+        chunks.append(chunk)
+    if tags:
+        chunks.append(br(text[index:]))
+    else:
+        chunks.append(br(text))
+    html = ''.join(chunks)
+    return html
+
+
+def get_teacher_mentions_sad_reviews(reviews, url_photos):
+    teacher_url_mentions = Counter()
+    teacher_url_samples = {}
+    url_teachers = {}
+    sad_reviews = []
+    reviews = sorted(
+        reviews, key=lambda _: _.date or datetime(1990, 1, 1),
+        reverse=True
+    )
+    for review in reviews:
+        sample = False
+        text = review.text
+        id = hash_text(text)
+        facts = review.facts
+        for fact in facts:
+            if fact.sad and fact.exact:
+                teacher = fact.teacher
+                url = teacher.url
+                if url not in url_teachers:
+                    sample = True
+                    teacher_url_samples[url] = id
+                    url_teachers[url] = teacher
+                teacher_url_mentions[url] += 1
+        if sample:
+            sad_reviews.append(VizSadReview(
+                id, review.author, review.date,
+                format_sad_review_html(text, facts)
+            ))
+    teacher_mentions = []
+    for url in url_teachers:
+        teacher = url_teachers[url]
+        mentions = teacher_url_mentions[url]
+        sample = teacher_url_samples[url]
+        name = parse_teacher_name(teacher.name)
+        name = build_normal_name(
+            name.last, name.first, name.middle,
+            lambda _: _
+        )
+        image = url_photos.get(url)
+        position = parse_sad_teacher_position(teacher.position)
+        teacher_mentions.append(VizTeacherMentions(
+            url, name, image, position, mentions, sample
+        ))
+    return teacher_mentions, sad_reviews
+
+
+def get_viz_sads(sad_selection, schools, sad_addresses, sad_review_mentions,
+                 url_photos, sad_images, eduoffice_reports):
+    host_schools = {get_host(_.url): _ for _ in schools}
+
+    host_addresses = defaultdict(list)
+    for record in sad_addresses:
+        host = get_host(record.url)
+        address = record.address
+        coordinates = address.coordinates
+        address = VizSadAddress(
+            address.description,
+            coordinates.latitude, coordinates.longitude 
+        )
+        host_addresses[host].append(address)
+    
+    host_reviews = defaultdict(list)
+    for record in sad_review_mentions:
+        host = get_host(record.url)
+        host_reviews[host].append(record)
+
+    host_images = defaultdict(list)
+    for record in sad_images:
+        host = get_host(record.url)
+        host_images[host].append(record)
+
+    host_incoming = {}
+    for record in eduoffice_reports:
+        host_incoming[record.host] = record.incoming
+
+    for record in sad_selection:
+        url = record.url
+        full = record.name
+        host = get_host(url)
+        school = host_schools[host]
+        link = school.title.link + '-sad'
+        title = VizSadTitle(full, link)
+        contacts = school.contacts
+        addresses = host_addresses[host]
+        reviews = host_reviews[host]
+        teacher_mentions, sad_reviews = get_teacher_mentions_sad_reviews(
+            reviews,
+            url_photos
+        )
+        images = host_images[host]
+        incoming = host_incoming.get(host)
+        yield VizSad(
+            url, title, school, addresses, contacts,
+            teacher_mentions, sad_reviews,
+            images, incoming
+        )
+
+
+def get_sad_page_filename(sad):
+    return '{link}.html'.format(
+        link=sad.title.link
+    )
+    
+
+def get_sad_page_path(sad):
+    return os.path.join(
+        SITE_DIR,
+        get_sad_page_filename(sad)
+    )
+
+
+def make_table(sequence, columns):
+    size = len(sequence)
+    rows = int(ceil(float(size) / columns))
+    table = []
+    for row in xrange(rows):
+        table.append([None for _ in xrange(columns)])
+    for index, item in enumerate(sequence):
+        row = index / columns
+        column = index % columns
+        table[row][column] = item
+    return table
+
+
+def generate_sad_page(sad, template):
+    path = get_sad_page_path(sad)
+    sad_url = sad.url
+    host = get_host(sad_url)
+    title = sad.title
+    page = get_sad_page_filename(sad)
+    addresses = sad.addresses
+    contacts = sad.contacts
+    
+    teacher_mentions = sad.teacher_mentions
+    if teacher_mentions:
+        teacher_mentions = sorted(
+            teacher_mentions,
+            key=lambda _: _.mentions, reverse=True
+        )
+        teacher_mentions = [
+            VizTeacherMentions(
+                url,
+                u'{last} {first} {middle}'.format(
+                    last=name.last,
+                    first=name.first,
+                    middle=name.middle
+                ),
+                image,
+                position, mentions, sample
+            )
+            for url, name, image, position, mentions, sample in teacher_mentions
+        ]
+        teacher_mentions = make_table(teacher_mentions, columns=4)
+        
+    reviews = [
+        VizSadReview(
+            id, author,
+            format_review_date(date) if date else None,
+            html
+        )
+        for id, author, date, html in sad.reviews
+    ]
+
+    images = [
+        (_.url, _.filename, _.thumb.width, _.thumb.height)
+        for _ in sad.images
+    ]
+
+    incoming_share = None
+    incoming = sad.incoming
+    if incoming:
+        total, from_0 = incoming
+        if total > 0:
+            incoming_share = int(float(from_0) / total * 100)
+
+
+    school = sad.school
+    school_url = school.title.link + '.html'
+    school_no_title = school.title.no
+
+    html = template.render(
+        full_title=title.full,
+        path=page,
+        link=title.link,
+        addresses=addresses,
+        contacts=contacts,
+        sad_url=sad_url,
+        host=host,
+        teacher_mentions=teacher_mentions,
+        reviews=reviews,
+        images=images,
+
+        incoming_share=incoming_share,
+        school_url=school_url,
+        school_no_title=school_no_title
+    )
+    dump_text(html, path)
+
+    
+def format_mentions(mentions):
+    if mentions % 10 == 1 and mentions != 11:
+        return u'{mentions} благодарность'.format(
+            mentions=mentions
+        )
+    elif mentions % 10 in (2, 3, 4) and mentions not in (12, 13, 14):
+        return u'{mentions} благодарности'.format(
+            mentions=mentions
+        )
+    else:
+        return u'{mentions} благодарностей'.format(
+            mentions=mentions
+        )
+
+    
+def generate_sad_pages(sads):
+    template = load_text(SAD_TEMPLATE)
+    env = Environment()
+    env.filters['format_mentions'] = format_mentions
+    template = env.from_string(template)
+    for sad in sads:
+        generate_sad_page(sad, template)
+
+
+def load_haar_cascade():
+    return cv2.CascadeClassifier(HAAR_CASCADE)
+
+
+def get_face(image, cascade):
+    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    boxes = cascade.detectMultiScale(gray)
+    if boxes != ():
+        count, _ = boxes.shape
+        if count == 1:
+            x, y, width, height = boxes[0]
+            assert width == height
+            size = width
+            height, width, _ = image.shape
+            shift = min([
+                size,
+                x, y,
+                height - size - y,
+                width - size - x
+            ])
+
+            image = image[
+                y - shift:y + size + shift,
+                x - shift:x + size + shift
+            ]
+            image = cv2.resize(image, (150, 150))
+            return image
+    
+
+def get_image_base64(image):
+    from io import BytesIO
+    from PIL import Image as PILImage
+
+    image = PILImage.fromarray(image)
+    bytes = BytesIO()
+    image.save(bytes, format='png')
+    return bytes.getvalue().encode('base64')
+
+
+def format_img(image):
+    return ('<img src="data:image/png;base64,{data}" '
+            'style="display:inline"/>').format(
+        data=get_image_base64(image)
+    )
+
+
+def display_image(image):
+    from IPython.display import HTML, display
+
+    html = format_img(image)
+    display(HTML(html))
+
+    
+def load_image_data(path):
+    image = cv2.imread(path)
+    try:
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    except:
+        return None
+    return image
+
+
+def get_photo_path(filename):
+    return os.path.join(PHOTO_DIR, filename)
+
+
+def dump_image(image, path):
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    cv2.imwrite(path, image)
+
+
+def list_photos_cache():
+    return list_images_cache(PHOTO_DIR)
+    
+   
+def convert_photos(filenames):
+    cascade = load_haar_cascade()
+    for filename in log_progress(every=10):
+        path = get_raw_path(filename)
+        image = load_image_data(path)
+        if image is not None:
+            face = get_face(image, cascade)
+            if face is not None:
+                path = get_photo_path(filename)
+                dump_image(face, path)
+
+
+def load_url_photos(sad_teachers):
+    url_photos = {}
+    cache = set(list_photos_cache())
+    for record in sad_teachers:
+        url = record.image
+        if url:
+            filename = get_image_filename(url)
+            if filename in cache:
+                url_photos[record.url] = filename
+    return url_photos
+
+
+def scale_sharpen_dir(dir, filenames):
+    for filename in filenames:
+        path = os.path.join(dir, filename)
+        check_call(['convert', path, '-resize', '100x100', path])
+        check_call(['convert', path, '-sharpen', '5', path])

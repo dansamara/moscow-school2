@@ -61,12 +61,16 @@
 	<div id="programs" class="col-md-4">
 	  Обучение {% if program_1_9 and program_1_11 and program_5_11 and program_10_11-%}
 	  с 1 по 9<img src="i/program-1-4.png" class="inline">, с 5 по 11 и с 10 по 11<img src="i/program-5-11.png" class="inline">
+	  {%- elif program_1_7 and program_8_11 -%}
+	  с 1 по 7<img src="i/program-1-4.png" class="inline"> и с 8 по 11<img src="i/program-5-11.png" class="inline">
 	  {%- elif program_1_4 and program_5_11 -%}
 	  с 1 по 4<img src="i/program-1-4.png" class="inline"> и с 5 по 11<img src="i/program-5-11.png" class="inline">
 	  {%- elif program_1_4 and program_1_11 -%}
 	  с 1 по 4<img src="i/program-1-4.png" class="inline"> и с 5 по 11
 	  {%- elif program_5_11 and program_1_11 -%}
 	  с 1 по 4 и с 5 по 11<img src="i/program-5-11.png" class="inline">
+	  {%- elif program_8_11 -%}
+	  с 8 по 11<img src="i/program-5-11.png" class="inline">
 	  {%- elif program_5_11 -%}
 	  с 5 по 11<img src="i/program-5-11.png" class="inline">
 	  {%- elif program_6_11 -%}
@@ -74,6 +78,9 @@
 	  {%- elif program_1_11 -%}
 	  с 1 по 11
 	  {%- endif %} класс.
+	  {%- if sad_link %}
+	  Есть <a href={{sad_link}}>детский сад</a>.
+	  {%- endif %}
 	</div>
       </div>
       <div class="row">
@@ -235,38 +242,38 @@
 	    </div>
 	  </div>
 	  {% endif %}
-	  {%- if images %}
-	  <a name="photos"></a>
-	  <div class="row">
-	    <div class="col-md-12">
-	      <div id="images">
-		{%- for url, filename, width, height in images %}
-		<a href="{{url}}" data-size="{{width}}x{{height}}">
-	          <img src="i/thumb/{{filename}}"/>
-		</a>
-		{% endfor %}
-	      </div>
-	      <div id="images-source">
-		{%- if images_source == "email" %}
-		Фотографии предоставлены администрацией школы.
-		{%- else %}
-		Фотографии взяты с <a href="{{images_source}}">официального сайта</a> школы.
-		{%- endif %}
-	      </div>
-	    </div>
-	  </div>
-	  {% endif %}
+	  <!-- {%- if images %} -->
+	  <!-- <a name="photos"></a> -->
+	  <!-- <div class="row"> -->
+	  <!--   <div class="col-md-12"> -->
+	  <!--     <div id="images"> -->
+	  <!-- 	{%- for url, filename, width, height in images %} -->
+	  <!-- 	<a href="{{url}}" data-size="{{width}}x{{height}}"> -->
+	  <!--         <img src="i/thumb/{{filename}}"/> -->
+	  <!-- 	</a> -->
+	  <!-- 	{% endfor %} -->
+	  <!--     </div> -->
+	  <!--     <div id="images-source"> -->
+	  <!-- 	{%- if images_source == "email" %} -->
+	  <!-- 	Фотографии предоставлены администрацией школы. -->
+	  <!-- 	{%- else %} -->
+	  <!-- 	Фотографии взяты с <a href="{{images_source}}">официального сайта</a> школы. -->
+	  <!-- 	{%- endif %} -->
+	  <!--     </div> -->
+	  <!--   </div> -->
+	  <!-- </div> -->
+	  <!-- {% endif %} -->
 	  {%- if reviews or polls %}
 	  <div class="row">
 	    <div id="reviews" class="col-md-12">
 	      <a name="reviews"></a>
 	      <h2>Отзывы</h2>
 	      {%- if reviews and polls %}
-	      Данные собраны через <a href="https://vk.com/obrmsk">социальные сети</a>, <a href="form.html?school={{link}}#review">форму для отзывов и голосований</a> и с сайтов «<a href="http://schools.mel.fm/">Школы Мела</a>» и «<a href="http://www.schoolotzyv.ru/">Школы России</a>».
+	      Данные собраны через <a href="https://vk.com/obrmsk">социальные сети</a>, <a href="form.html?school={{link}}#review-school">форму для отзывов и голосований</a> и с сайтов «<a href="http://schools.mel.fm/">Школы Мела</a>» и «<a href="http://www.schoolotzyv.ru/">Школы России</a>».
 	      {% elif polls %}
-	      Данные собраны через <a href="https://vk.com/obrmsk">социальные сети</a> и <a href="form.html?school={{link}}#review">форму для отзывов и голосований</a>.
+	      Данные собраны через <a href="https://vk.com/obrmsk">социальные сети</a> и <a href="form.html?school={{link}}#review-school">форму для отзывов и голосований</a>.
 	      {% elif reviews %}
-	      Данные собраны с сайтов «<a href="http://schools.mel.fm/">Школы Мела</a>» и «<a href="http://www.schoolotzyv.ru/">Школы России</a>» и через нашу <a href="form.html?school={{link}}#review">форму для отзывов</a>.
+	      Данные собраны с сайтов «<a href="http://schools.mel.fm/">Школы Мела</a>» и «<a href="http://www.schoolotzyv.ru/">Школы России</a>» и через нашу <a href="form.html?school={{link}}#review-school">форму для отзывов</a>.
 	      {% endif %}
 	      {%- if polls %}
 	      {%- for question, answers in polls %}
@@ -294,30 +301,32 @@
 	      {% endfor %}
 	      {% endif %}
 	      {%- if reviews %}
-	      {%- for host, url, date, name, text in reviews %}
-	      <div class="row review">
-		<div class="col-md-4 meta">
-		  <div class="name">
-		    {{name}}
+	      <div id="texts">
+		{%- for host, url, date, name, text in reviews %}
+		<div class="row review">
+		  <div class="col-md-4 meta">
+		    <div class="name">
+		      {{name}}
+		    </div>
+		    <div class="date">
+		      {{date}}
+		    </div>
+		    {%- if host == "www.schoolotzyv.ru" %}
+		    <div class="source">
+		      <a href="{{url}}">Другие отзывы</a> на «Школах России»
+		    </div>
+		    {%- elif host == "schools.mel.fm" -%}
+		    <div class="source">
+		      <a href="{{url}}">Другие отзывы</a> на «Школах Мела»
+		    </div>
+		    {% endif %}
 		  </div>
-		  <div class="date">
-		    {{date}}
+		  <div class="col-md-8">
+		    {{text}}
 		  </div>
-		  {%- if host == "www.schoolotzyv.ru" %}
-		  <div class="source">
-		    <a href="{{url}}">Другие отзывы</a> на «Школах России»
-		  </div>
-		  {%- elif host == "schools.mel.fm" -%}
-		  <div class="source">
-		    <a href="{{url}}">Другие отзывы</a> на «Школах Мела»
-		  </div>
-		  {% endif %}
 		</div>
-		<div class="col-md-8">
-		  {{text}}
-		</div>
+		{% endfor %}
 	      </div>
-	      {% endfor %}
 	      {% endif %}
 	    </div>
 	  </div>
@@ -357,7 +366,7 @@
 	      Если вы нашли <span class="bug">ошибку</span> или <span class="bug">неточность</span>, пожалуйста, <a href="form.html?school={{link}}#bug">сообщите нам об этом</a>.
 	    </p>
 	    <p>
-	      Ученик, выпускник или родитель? <a href="form.html?school={{link}}#review">Оставьте отзыв о школе</a>.
+	      Ученик, выпускник или родитель? <a href="form.html?school={{link}}#review-school">Оставьте отзыв о школе</a>.
 	    </p>
 	  </div>
 	</div>

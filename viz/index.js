@@ -1,6 +1,6 @@
 function init() {
     var data = [];
-    $('ul#schools > li').each(function(index, school) {
+    $('ul#school-sads > li').each(function(index, school) {
 	school = $(school);
 	var link = school.find('a');
 	var title = link.text();
@@ -23,7 +23,7 @@ function init() {
 	    });
 	});
     });
-    $('ul#schools').remove()
+    $('ul#school-sads').remove()
 
     var map = new ymaps.Map ('map', {
 	center: [55.76, 37.64],
@@ -36,7 +36,10 @@ function init() {
     data.forEach(function(item) {
 	var icon;
 	var program = item.program;
-	if (program == 'program_1_4') {
+	if (program == 'program_0_1') {
+	    icon = 'i/program-0-1.png';
+	    program = null;
+	} else if (program == 'program_1_4') {
 	    icon = 'i/program-1-4.png';
 	    program = 'Обучение с 1 по 4 класс';
 	} else if (program == 'program_5_11') {
@@ -54,6 +57,12 @@ function init() {
 	} else if (program == 'program_10_11') {
 	    icon = 'i/program-5-11.png'
 	    program = 'Обучение с 10 по 11 класс';
+	} else if (program == 'program_8_11') {
+	    icon = 'i/program-5-11.png'
+	    program = 'Обучение с 8 по 11 класс';
+	} else if (program == 'program_1_7') {
+	    icon = 'i/program-1-4.png'
+	    program = 'Обучение с 1 по 7 класс';
 	}
 
 	var balloon = (
@@ -64,9 +73,11 @@ function init() {
 	if (item.building > 0) {
 	    balloon += '<span>Корпус № ' + item.building + '.</span> '
 	}
+	if (program) {
+	    balloon += '<span>' + program + '.</span> '
+	}
 	balloon += (
-	    '<span>' + program + '.</span> ' +
-		'<span>' + item.address + '.</span></div>' +
+	    '<span>' + item.address + '.</span></div>' +
 		'<div class="more"><a href="' + item.url + '">' +
 		'Посмотреть подробную информацию</a></div>' +
 		'</div>'

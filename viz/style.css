@@ -104,7 +104,7 @@ body#main {
     border-bottom: none;
 }
 
-#main #schools {
+#main #school-sads {
     visibility: hidden;
 }
 
@@ -118,7 +118,7 @@ body#main {
     fill: black;
 }
 
-#school #map {
+#sad #map, #school #map {
     width: 100%;
     height: 200px;
     padding: 0;
@@ -299,6 +299,10 @@ body#main {
     display: none;
 }
 
+#reviews #texts {
+    margin-top: 1.5em;
+}
+
 .review {
     margin-top: 0.5em;
 }
@@ -314,7 +318,7 @@ body#main {
 }
 
 .poll {
-    margin-top: 0.5em;
+    margin-top: 1em;
 }
 
 .poll .answer .votes {
@@ -380,6 +384,10 @@ body#main {
     border-width:4px 4px 0;
 }
 
+#list a.sad {
+    font-size: 0.85em;
+}
+
 #pupils-teachers .bar,
 #salaries .bar {
     shape-rendering: crispEdges;
@@ -397,4 +405,26 @@ body#main {
     stroke-width: 1px;
     shape-rendering: crispEdges;
     stroke: rgba(70, 130, 180, 0.8)
+}
+
+#teacher_mentions table {
+    margin-top: 1em;
+    font-size: 0.85em;
+    line-height: 1.4;
+}
+
+#teacher_mentions table td {
+    padding-top: 2em;
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+    vertical-align: top;
+}
+
+#teacher_mentions table img {
+    display: block;
+}
+
+#teacher_mentions .sample {
+    margin-top: -0.5em;
+    border-bottom: 1px dashed;
 }

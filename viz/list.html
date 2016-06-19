@@ -58,13 +58,17 @@
 	      <th class="title">Название</th>
 	      <th>Сайт</th>
 	    </tr>
-	    {%- for path, title, host, url, rating in schools %}
+	    {%- for path, sad_path, title, host, url, rating in schools %}
 	    <tr>
 	      <td class="rating">
 		{{rating if rating else "500+"}}
 	      </td>
 	      <td class="title">
 		<a href="{{path}}">{{title}}</a>
+		{%- if sad_path %}
+		<br/>
+		╰ <a class="sad" href="{{sad_path}}">Дошкольное отделение</a>
+		{% endif %}
 	      </td>
 	      <td>
 		<a href="{{url}}">{{host}}</a>

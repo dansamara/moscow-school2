@@ -122,6 +122,12 @@ function viz_map() {
 	    } else if (program == 'program_10_11') {
 		icon = 'i/program-5-11.png'
 		program = 'Обучение с 10 по 11 класс';
+	    }  else if (program == 'program_8_11') {
+		icon = 'i/program-5-11.png'
+		program = 'Обучение с 8 по 11 класс';
+	    } else if (program == 'program_1_7') {
+		icon = 'i/program-1-4.png'
+		program = 'Обучение с 1 по 7 класс';
 	    }
 	    map.geoObjects.add(
 		new ymaps.Placemark(
@@ -411,12 +417,12 @@ function viz_universities() {
 
 
 function viz_teachers() {
-    var subjects = d3.selectAll('#teachers > ol > li')
+    var subjects = d3.selectAll('#teachers > ol > li');
     var data = [];
     subjects[0]
 	.forEach(function(d) {
 	    var item = d3.select(d);
-	    subject = item.select('span').text();
+	    var subject = item.select('span').text();
 	    var categories = []
 	    var items = item.selectAll('li a');
 	    items[0]
